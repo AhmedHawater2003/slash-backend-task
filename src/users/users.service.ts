@@ -8,6 +8,7 @@ export class UsersService {
   async findOrdersHistory(userId: number) {
     return this.prismaService.orders.findMany({
       where: { userId: userId },
+      orderBy: { orderDate: 'desc' },
       include: { orderItems: true },
     });
   }

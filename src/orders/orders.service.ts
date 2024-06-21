@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { get } from 'http';
@@ -18,29 +22,55 @@ export class OrdersService {
     }
 
     let totalPrice = 0;
-    return this.prismaService.orders.create({
-      data: {
-        user: { connect: { userId: orderDetails.userId } },
-        orderItems: {
-          create: cartProducts.map((cartItem) => {
-            totalPrice += cartItem.product.price.toNumber() * cartItem.quantity;
-            return {
+
+    try {
+      // Sequentially update stock and calculate totalPrice
+      for (const cartItem of cartProducts) {
+        totalPrice += cartItem.product.price.toNumber() * cartItem.quantity;
+
+        // Update stock
+        await this.prismaService.products.update({
+          where: { productId: cartItem.product.productId },
+          data: { stock: { decrement: cartItem.quantity } },
+        });
+      }
+
+      // Create order after all stock updates are complete
+      const order = await this.prismaService.orders.create({
+        data: {
+          user: { connect: { userId: orderDetails.userId } },
+          orderItems: {
+            create: cartProducts.map((cartItem) => ({
               product: { connect: { productId: cartItem.product.productId } },
               quantity: cartItem.quantity,
               price: cartItem.product.price,
-            };
-          }),
+            })),
+          },
+          totalPrice: new Decimal(totalPrice),
+          totalAfterDiscount: totalPrice,
         },
-        totalPrice: new Decimal(totalPrice),
-        totalAfterDiscount: totalPrice,
-      },
-    });
+      });
+
+      return order;
+    } catch (error) {
+      // Handle errors
+      console.error('Error creating order:', error);
+      throw new Error('Failed to update stock and create order');
+    }
   }
 
   findOne(orderId: number) {
     return this.prismaService.orders.findUnique({
       where: { orderId: orderId },
-      include: { orderItems: true },
+      include: {
+        orderItems: {
+          select: {
+            product: { select: { name: true } },
+            price: true,
+            quantity: true,
+          },
+        },
+      },
     });
   }
 
@@ -62,7 +92,7 @@ export class OrdersService {
       where: { cartId: userId },
       select: {
         quantity: true,
-        product: { select: { price: true, productId: true } },
+        product: { select: { price: true, productId: true, stock: true } },
       },
     });
   }
@@ -73,7 +103,7 @@ export class OrdersService {
     });
 
     if (!order) {
-      return { message: 'Order not found' };
+      throw new BadRequestException('Order not found');
     }
 
     if (
@@ -85,11 +115,11 @@ export class OrdersService {
       });
 
       if (!coupon) {
-        return { message: 'Invalid coupon' };
+        throw new BadRequestException('Invalid coupon code');
       }
 
       if (new Date() > coupon.expiry) {
-        return { message: 'Coupon expired' };
+        throw new InternalServerErrorException('Coupon has expired');
       }
 
       return this.prismaService.orders.update({
@@ -102,7 +132,9 @@ export class OrdersService {
         },
       });
     } else {
-      return { message: 'Order cannot be modified' };
+      throw new BadRequestException(
+        'Coupon cannot be applied as the order has been already shipped',
+      );
     }
   }
 }

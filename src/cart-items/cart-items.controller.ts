@@ -9,15 +9,17 @@ import {
   Put,
 } from '@nestjs/common';
 import { CartItemsService } from './cart-items.service';
-import { ApiBody } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 @Controller('api/cart')
 export class CartItemsController {
   constructor(private readonly cartItemsService: CartItemsService) {}
 
   @Post('/add')
+  @ApiOperation({
+    summary: "Add item to user's cart",
+  })
   @ApiBody({
-    description: 'Add item to cart',
     schema: {
       type: 'object',
       properties: {
@@ -31,8 +33,10 @@ export class CartItemsController {
   }
 
   @Put('/update')
+  @ApiOperation({
+    summary: 'Update item quantity in cart',
+  })
   @ApiBody({
-    description: 'Update item in cart',
     schema: {
       type: 'object',
       properties: {
@@ -54,20 +58,24 @@ export class CartItemsController {
   }
 
   @Get(':id')
-  @ApiBody({
-    description: 'Get cart items',
-    schema: {
-      type: 'object',
-      properties: {
-        cartId: { type: 'number', example: 1 },
-      },
-    },
+  @ApiOperation({
+    summary:
+      "Get all items in a user's cart by cart id. This will return all items in the cart along with the product details.",
+  })
+  @ApiParam({
+    name: 'id',
+    type: 'number',
+    required: true,
+    description: 'Cart ID',
   })
   findOne(@Param('id') cartId: string) {
     return this.cartItemsService.findOne(+cartId);
   }
 
   @Delete('/remove')
+  @ApiOperation({
+    summary: "Remove item from user's cart",
+  })
   @ApiBody({
     description: 'Remove item from cart',
     schema: {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { get } from 'http';
@@ -32,10 +32,10 @@ export class CartItemsService {
     });
   }
 
-  findOne(id: number) {
+  findOne(cartId: number) {
     return this.prismaService.cartItems.findMany({
       where: {
-        cartId: id,
+        cartId: cartId,
       },
     });
   }
@@ -58,6 +58,14 @@ export class CartItemsService {
     productId: number;
     quantity: number;
   }) {
+    // check if quantity does not exceed prodcut stock
+    const product = await this.prismaService.products.findUnique({
+      where: { productId: updatedItemDetails.productId },
+    });
+    if (product.stock < updatedItemDetails.quantity) {
+      throw new BadRequestException('Quantity exceeds product stock');
+    }
+
     return this.prismaService.cartItems.update({
       where: {
         cartId_productId: {
