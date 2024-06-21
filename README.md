@@ -10,7 +10,7 @@ An Order Management System (OMS) for slash e-commerce mobile app.
 - TypeScript as the programming language
 
 ## Database Diagram
-![e-commerce](https://github.com/AhmedHawater2003/slash-backend-task/assets/63217442/0a5f4cbf-3894-4572-b01e-b2bf6aeae100)
+![e-commerce (1)](https://github.com/AhmedHawater2003/slash-backend-task/assets/63217442/d12304bd-3e5a-46be-804f-f3806ee67485)
 
 ## Api Documentation Overview
 ![image](https://github.com/AhmedHawater2003/slash-backend-task/assets/63217442/defcda37-2d35-402c-9ce2-a54e86a87014)
